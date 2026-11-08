@@ -200,18 +200,38 @@ class Bot:
             )
             if os.path.isdir(bundled_browsers):
                 os.environ["PLAYWRIGHT_BROWSERS_PATH"] = bundled_browsers
+
+        is_headless = os.environ.get("HEADLESS", "false").strip().lower() in {"1", "true", "yes", "on"}
+
+        browser_args = [
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--disable-blink-features=AutomationControlled",
+            "--disable-infobars",
+            "--disable-extensions",
+            "--lang=en-US",
+        ]
+
+        if is_headless:
+            # TRUE STEALTH "HEADLESS":
+            # Cloudflare and modern anti-bots detect Chromium's headless shell instantly
+            # because of canvas/WebGL/hardware pipeline absence.
+            # To achieve real stealth in background without visible interruption:
+            # We launch the full headed engine (headless=False) but position its window
+            # at coordinates -32000,-32000 (completely off-screen and invisible to the user).
+            logger.info("Engaging Stealth Background mode (Headed engine running off-screen)...")
+            browser_args.extend([
+                "--window-position=-32000,-32000",
+                "--window-size=1280,800",
+            ])
+        else:
+            browser_args.append("--start-maximized")
+
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(
-            headless=os.environ.get("HEADLESS", "false").strip().lower() in {"1", "true", "yes", "on"},
-            args=[
-                "--disable-dev-shm-usage",
-                "--no-sandbox",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-                "--disable-extensions",
-                "--start-maximized",
-                "--lang=en-US",
-            ])
+            headless=False,  # Always use the real, verified-working headed engine
+            args=browser_args
+        )
         self._new_ctx()
 
     def _new_ctx(self):

@@ -10,6 +10,7 @@ import traceback
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox, ttk
+import webbrowser
 
 IS_MAC = sys.platform == "darwin"
 IS_WIN = sys.platform == "win32"
@@ -113,6 +114,38 @@ def log_crash(exc_type, exc_value, exc_traceback):
 
 
 sys.excepthook = log_crash
+
+
+class ToolTip:
+    """Hover tooltip for Tkinter widgets."""
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tip_window = None
+        self.widget.bind("<Enter>", self.show_tip)
+        self.widget.bind("<Leave>", self.hide_tip)
+
+    def show_tip(self, event=None):
+        if self.tip_window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 20
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        label = tk.Label(
+            tw, text=self.text, justify="left",
+            background="#1e293b", foreground="#e2e8f0",
+            relief="solid", borderwidth=1,
+            font=(FONT_FAMILY, 9), padx=8, pady=5
+        )
+        label.pack(ipadx=1)
+
+    def hide_tip(self, event=None):
+        tw = self.tip_window
+        self.tip_window = None
+        if tw:
+            tw.destroy()
 
 
 class AutomationLauncher(tk.Tk):
@@ -255,11 +288,18 @@ class AutomationLauncher(tk.Tk):
         ttk.Label(run_card, text="02  RUN PLAN", style="CardTitle.TLabel").pack(anchor="w", pady=(0, 4))
         ttk.Label(run_card, text="Choose how many lessons to process", style="Muted.TLabel").pack(anchor="w", pady=(0, 12))
         ttk.Label(run_card, text="LESSONS", style="Field.TLabel").pack(anchor="w")
-        ttk.Spinbox(run_card, from_=1, to=9999, textvariable=self.lesson_count, width=10, font=(FONT_FAMILY, 16, "bold")).pack(anchor="w", pady=(5, 2))
+        spin = ttk.Spinbox(run_card, from_=1, to=9999, textvariable=self.lesson_count, width=10, font=(FONT_FAMILY, 16, "bold"))
+        spin.pack(anchor="w", pady=(5, 2))
+        ToolTip(spin, "Set how many lesson iterations to complete before stopping automatically")
+
         ttk.Label(run_card, text="Default: 40 · This value is not saved", style="Muted.TLabel").pack(anchor="w", pady=(0, 8))
-        ttk.Checkbutton(run_card, text="Hide browser window (headless)", variable=self.headless, style="TCheckbutton").pack(anchor="w", pady=(2, 12))
+        headless_cb = ttk.Checkbutton(run_card, text="Hide browser window (headless stealth)", variable=self.headless, style="TCheckbutton")
+        headless_cb.pack(anchor="w", pady=(2, 12))
+        ToolTip(headless_cb, "Runs the full Chrome engine off-screen invisibly without popping up a window on your desktop")
+
         self.start_button = ttk.Button(run_card, text="▶   START LESSON RUN", style="Accent.TButton", command=self._start)
         self.start_button.pack(fill="x", ipady=7)
+        ToolTip(self.start_button, "Start processing lessons automatically with Groq AI")
         self.stop_button = ttk.Button(run_card, text="■   Stop run", style="Stop.TButton", command=self._stop, state="disabled")
         self.stop_button.pack(fill="x", pady=(8, 0))
 
@@ -268,11 +308,26 @@ class AutomationLauncher(tk.Tk):
         api_header = ttk.Frame(api_card, style="Card.TFrame")
         api_header.pack(fill="x")
         ttk.Label(api_header, text="03  AI CONNECTION", style="CardTitle.TLabel").pack(side="left")
-        ttk.Label(api_header, text="Groq API key", style="Muted.TLabel").pack(side="right")
+        
+        # Clickable link to get free Groq API key
+        key_link = tk.Label(
+            api_header,
+            text="Get free API key ↗",
+            bg=CARD,
+            fg=ACCENT,
+            cursor="hand2",
+            font=(FONT_FAMILY, 9, "underline")
+        )
+        key_link.pack(side="right")
+        key_link.bind("<Button-1>", lambda e: webbrowser.open_new_tab("https://console.groq.com/keys"))
+        ToolTip(key_link, "Click to open https://console.groq.com/keys and create a free API key")
+
         api_row = ttk.Frame(api_card, style="Card.TFrame")
         api_row.pack(fill="x", pady=(10, 0))
         self.api_entry = ttk.Entry(api_row, textvariable=self.api_key, show="•")
         self.api_entry.pack(side="left", fill="x", expand=True)
+        ToolTip(self.api_entry, "Paste your Groq API key starting with 'gsk_' here")
+
         self.show_api_key = tk.BooleanVar(value=False)
         ttk.Checkbutton(api_row, text="Show", variable=self.show_api_key, command=self._toggle_api_key, style="TCheckbutton").pack(side="left", padx=(12, 0))
 
@@ -303,6 +358,10 @@ class AutomationLauncher(tk.Tk):
         ttk.Label(field, text=label, style="Field.TLabel").pack(anchor="w", pady=(0, 4))
         entry = ttk.Entry(parent, textvariable=variable, show="•" if secret else "")
         entry.pack(in_=field, fill="x")
+        if "Username" in label:
+            ToolTip(entry, "Enter your Achieve3000 student username or email")
+        elif "Password" in label:
+            ToolTip(entry, "Enter your Achieve3000 account password")
 
     def _load_settings(self):
         env_values = {}

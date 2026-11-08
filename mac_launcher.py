@@ -688,17 +688,20 @@ HTML_PAGE = """<!DOCTYPE html>
       <span id="saveStatus" class="save-status">Auto-saved ✓</span>
     </div>
     <div class="form-grid">
-      <label for="groq_key">Groq API Key</label>
-      <input type="password" id="groq_key" placeholder="gsk_..." autocomplete="off" oninput="scheduleAutoSave()">
+      <label for="groq_key">
+        Groq API Key
+        <a href="https://console.groq.com/keys" target="_blank" style="color:var(--accent); font-size:11px; margin-left:6px; text-decoration:underline;">Get key ↗</a>
+      </label>
+      <input type="password" id="groq_key" placeholder="gsk_..." autocomplete="off" title="Create a free key at https://console.groq.com/keys" oninput="scheduleAutoSave()">
 
       <label for="username">Achieve3000 Username</label>
-      <input type="text" id="username" placeholder="Student username" autocomplete="off" oninput="scheduleAutoSave()">
+      <input type="text" id="username" placeholder="Student username" autocomplete="off" title="Your Achieve3000 student username or email" oninput="scheduleAutoSave()">
 
       <label for="password">Achieve3000 Password</label>
-      <input type="password" id="password" placeholder="••••••••" autocomplete="off" oninput="scheduleAutoSave()">
+      <input type="password" id="password" placeholder="••••••••" autocomplete="off" title="Your Achieve3000 account password" oninput="scheduleAutoSave()">
 
       <label for="lessons">Lesson Iterations</label>
-      <input type="number" id="lessons" value="40" min="1" max="9999" oninput="scheduleAutoSave(); updateTarget()">
+      <input type="number" id="lessons" value="40" min="1" max="9999" title="How many lessons to process before stopping" oninput="scheduleAutoSave(); updateTarget()">
       <div class="field-desc">Configures how many lessons to complete before stopping.</div>
 
       <label>Headless Mode</label>
@@ -707,7 +710,7 @@ HTML_PAGE = """<!DOCTYPE html>
           <input type="checkbox" id="headless" onchange="scheduleAutoSave()">
           <span class="slider"></span>
         </label>
-        <span style="font-size: 12px; color: var(--text-muted);">Run Chromium in background without opening browser window</span>
+        <span style="font-size: 12px; color: var(--text-muted);" title="Runs the full browser engine off-screen invisibly">Run in background without opening a window (stealth off-screen)</span>
       </div>
     </div>
   </div>
