@@ -3,13 +3,13 @@ name: Build macOS app
 on:
   workflow_dispatch:
   push:
+    tags:
+      - "v*"
     paths:
       - "launcher.py"
       - "mac_launcher.py"
       - "achieve3000_automation.py"
       - "requirements.txt"
-      - "test_macos_simulation.py"
-      - "build_launcher.ps1"
       - "build_macos.sh"
       - "package_macos_dmg.sh"
       - "Achieve3000Launcher.spec"
@@ -20,26 +20,63 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Run unit & compatibility tests
         run: |
           pip install -r requirements.txt
           python -m unittest test_macos_simulation.py
+
       - name: Build app
         run: bash build_macos.sh
+
       - name: Verify app bundle integrity
         run: |
           test -x "dist/Achieve3000Launcher.app/Contents/MacOS/Achieve3000Launcher"
           test -x "dist/Achieve3000Launcher.app/Contents/MacOS/achieve3000_automation"
           test -d "dist/Achieve3000Launcher.app/Contents/Resources/playwright-browsers"
           echo "Bundle structure, permissions, and icons verified successfully."
+
       - name: Package app as DMG
         run: bash package_macos_dmg.sh
+
       - uses: actions/upload-artifact@v4
         with:
           name: Achieve3000-macOS
           path: Achieve3000-macOS.dmg
+          retention-days: 7
+
+      - name: Attach DMG to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Achieve3000 Runner ${{ github.ref_name }}"
+          body: |
+            ## Achieve3000 Runner ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | 🪟 Windows | `Achieve3000-Windows.zip` |
+            | 🍎 macOS | `Achieve3000-macOS.dmg` |
+
+            ### What's new
+            - Stealth mode (playwright-stealth) — masks automation fingerprints
+            - Chrome 130 user-agent + realistic HTTP headers
+            - Groq AI for MCQ answering
+
+            ### How to use (macOS)
+            1. Open the `.dmg` and drag the app to Applications
+            2. Launch **Achieve3000Launcher**
+            3. Enter Groq API key + credentials → click **Start Automation**
+          files: Achieve3000-macOS.dmg
+          draft: false
+          prerelease: false

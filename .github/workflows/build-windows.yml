@@ -3,19 +3,23 @@ name: Build Windows app
 on:
   workflow_dispatch:
   push:
+    tags:
+      - "v*"
     paths:
       - "launcher.py"
       - "achieve3000_automation.py"
       - "requirements.txt"
-      - "build_windows.ps1"
-      - "Achieve3000Launcher.spec"
       - ".github/workflows/build-windows.yml"
       - "achieve3000.ico"
-      - "achieve3000.png"
 
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\playwright-browsers
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,56 +32,46 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
-      - name: Install Playwright browsers
-        env:
-          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\playwright-browsers
-        run: |
-          python -m playwright install chromium
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium
 
       - name: Build automation worker EXE
         run: |
           python -m PyInstaller --noconfirm --clean --onefile `
             --collect-data certifi `
+            --hidden-import playwright_stealth `
             --name achieve3000_automation achieve3000_automation.py
 
       - name: Build launcher EXE
         run: |
+          $icon = ""
+          if (Test-Path "achieve3000.ico") { $icon = "--icon achieve3000.ico" }
           python -m PyInstaller --noconfirm --clean --onefile `
             --name Achieve3000Launcher `
-            --icon achieve3000.ico `
-            --add-data "achieve3000_automation.py;." `
             --hidden-import playwright_stealth `
             --collect-data certifi `
+            $icon `
             launcher.py
 
-      - name: Copy automation EXE into dist folder
-        run: |
-          copy dist\achieve3000_automation.exe dist\achieve3000_automation.exe
-          echo "Dist contents:"
-          dir dist\
-
       - name: Copy Playwright browsers into dist
-        env:
-          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\playwright-browsers
         run: |
           if (Test-Path "playwright-browsers") {
             Copy-Item -Recurse -Force playwright-browsers dist\playwright-browsers
-            Write-Host "Playwright browsers copied to dist."
+            Write-Host "Playwright browsers copied."
           } else {
-            Write-Host "No bundled browser directory found — skipping."
+            Write-Host "No bundled browser directory — skipping."
           }
 
       - name: Verify build artifacts
         run: |
           if (-not (Test-Path "dist\Achieve3000Launcher.exe")) {
-            Write-Error "Achieve3000Launcher.exe not found!"
-            exit 1
+            Write-Error "Achieve3000Launcher.exe not found!"; exit 1
           }
           if (-not (Test-Path "dist\achieve3000_automation.exe")) {
-            Write-Error "achieve3000_automation.exe not found!"
-            exit 1
+            Write-Error "achieve3000_automation.exe not found!"; exit 1
           }
-          Write-Host "All build artifacts verified."
+          Write-Host "All artifacts verified."
+          dir dist\
 
       - name: Package as ZIP
         run: |
@@ -88,5 +82,32 @@ jobs:
         with:
           name: Achieve3000-Windows
           path: Achieve3000-Windows.zip
-          retention-days: 30
+          retention-days: 7
 
+      - name: Create GitHub Release (Windows)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Achieve3000 Runner ${{ github.ref_name }}"
+          body: |
+            ## Achieve3000 Runner ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | 🪟 Windows | `Achieve3000-Windows.zip` |
+            | 🍎 macOS | `Achieve3000-macOS.dmg` *(added when macOS build completes)* |
+
+            ### What's new
+            - Stealth mode (playwright-stealth) — masks automation fingerprints
+            - Chrome 130 user-agent + realistic HTTP headers
+            - Groq AI for MCQ answering
+
+            ### How to use (Windows)
+            1. Extract the ZIP
+            2. Run `Achieve3000Launcher.exe`
+            3. Enter Groq API key + credentials → click **Start**
+          files: Achieve3000-Windows.zip
+          draft: false
+          prerelease: false
