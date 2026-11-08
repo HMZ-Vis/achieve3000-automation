@@ -41,14 +41,14 @@ jobs:
       - name: Build launcher EXE
         run: |
           if (Test-Path "achieve3000.ico") {
-            python -m PyInstaller --noconfirm --clean --onefile `
+            python -m PyInstaller --noconfirm --clean --onefile --noconsole `
               --name Achieve3000Launcher `
               --icon achieve3000.ico `
               --collect-all playwright_stealth `
               --collect-data certifi `
               launcher.py
           } else {
-            python -m PyInstaller --noconfirm --clean --onefile `
+            python -m PyInstaller --noconfirm --clean --onefile --noconsole `
               --name Achieve3000Launcher `
               --collect-all playwright_stealth `
               --collect-data certifi `

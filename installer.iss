@@ -1,6 +1,6 @@
 ; Inno Setup Script for Achieve3000 Runner
 #define MyAppName "Achieve3000 Runner"
-#define MyAppVersion "2.0.2"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "Achieve3000 Automation"
 #define MyAppExeName "Achieve3000Launcher.exe"
 
@@ -14,7 +14,7 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=installer-output
 OutputBaseFilename=Achieve3000-Setup
-Compression=lzma2/ultra64
+Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
