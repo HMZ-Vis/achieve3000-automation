@@ -27,6 +27,7 @@ rm -rf build dist
 # Build automation worker binary
 python3 -m PyInstaller --noconfirm --clean --onefile \
   --collect-data certifi \
+  --collect-all playwright_stealth \
   --name achieve3000_automation achieve3000_automation.py
 
 # Build launcher app bundle using spec file

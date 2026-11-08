@@ -4,6 +4,12 @@ import sys
 
 # Resource and asset bindings
 datas = []
+try:
+    from PyInstaller.utils.hooks import collect_all
+    ps_datas, ps_binaries, ps_hiddenimports = collect_all('playwright_stealth')
+    datas += ps_datas
+except Exception:
+    ps_hiddenimports = []
 if os.path.exists('achieve3000.ico'):
     datas.append(('achieve3000.ico', '.'))
 if os.path.exists('achieve3000.png'):
@@ -25,7 +31,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=['mac_launcher'],
+    hiddenimports=['mac_launcher'] + ps_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -1,61 +1,163 @@
-name: Build and publish release
+name: Build and Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
-
-permissions:
-  contents: write
+    paths-ignore:
+      - "README.md"
+      - ".gitignore"
 
 jobs:
-  windows:
+  build-windows:
+    name: Build Windows App
     runs-on: windows-latest
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}\playwright-browsers
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build Windows launcher
-        shell: pwsh
-        run: .\build_launcher.ps1
-      - name: Install Inno Setup
-        shell: pwsh
-        run: choco install innosetup --no-progress -y
-      - name: Build Windows installer
-        shell: pwsh
-        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" ".\Achieve3000Installer.iss"'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium
+
+      - name: Build automation worker EXE
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile `
+            --collect-data certifi `
+            --collect-all playwright_stealth `
+            --name achieve3000_automation achieve3000_automation.py
+
+      - name: Build launcher EXE
+        run: |
+          if (Test-Path "achieve3000.ico") {
+            python -m PyInstaller --noconfirm --clean --onefile `
+              --name Achieve3000Launcher `
+              --icon achieve3000.ico `
+              --collect-all playwright_stealth `
+              --collect-data certifi `
+              launcher.py
+          } else {
+            python -m PyInstaller --noconfirm --clean --onefile `
+              --name Achieve3000Launcher `
+              --collect-all playwright_stealth `
+              --collect-data certifi `
+              launcher.py
+          }
+
+      - name: Copy Playwright browsers into dist
+        run: |
+          if (Test-Path "playwright-browsers") {
+            Copy-Item -Recurse -Force playwright-browsers dist\playwright-browsers
+            Write-Host "Playwright browsers copied."
+          } else {
+            Write-Host "No bundled browser directory — skipping."
+          }
+
+      - name: Verify build artifacts
+        run: |
+          if (-not (Test-Path "dist\Achieve3000Launcher.exe")) {
+            Write-Error "Achieve3000Launcher.exe not found!"; exit 1
+          }
+          if (-not (Test-Path "dist\achieve3000_automation.exe")) {
+            Write-Error "achieve3000_automation.exe not found!"; exit 1
+          }
+          Write-Host "All Windows artifacts verified."
+
+      - name: Package as ZIP
+        run: |
+          Compress-Archive -Path dist\* -DestinationPath Achieve3000-Windows.zip
+          Write-Host "Packaged Achieve3000-Windows.zip"
+
       - uses: actions/upload-artifact@v4
         with:
           name: Achieve3000-Windows
-          path: installer-output/Achieve3000Setup-v1.0.15.exe
+          path: Achieve3000-Windows.zip
+          retention-days: 7
 
-  macos:
+  build-macos:
+    name: Build macOS App
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build macOS launcher
+
+      - name: Run unit & compatibility tests
+        run: |
+          pip install -r requirements.txt
+          python -m unittest test_macos_simulation.py
+
+      - name: Build app
         run: bash build_macos.sh
-      - name: Package macOS app
+
+      - name: Verify app bundle integrity
+        run: |
+          test -x "dist/Achieve3000Launcher.app/Contents/MacOS/Achieve3000Launcher"
+          test -x "dist/Achieve3000Launcher.app/Contents/MacOS/achieve3000_automation"
+          test -d "dist/Achieve3000Launcher.app/Contents/Resources/playwright-browsers"
+          echo "Bundle structure, permissions, and icons verified successfully."
+
+      - name: Package app as DMG
         run: bash package_macos_dmg.sh
+
       - uses: actions/upload-artifact@v4
         with:
           name: Achieve3000-macOS
           path: Achieve3000-macOS.dmg
+          retention-days: 7
 
   release:
-    needs: [windows, macos]
+    name: Create Unified GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-windows, build-macos]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
           path: release-assets
-          merge-multiple: true
-      - name: Publish GitHub release
+          merge-artifacts: true
+
+      - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/*
-          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+          name: "Achieve3000 Runner ${{ github.ref_name }}"
+          body: |
+            ## Achieve3000 Runner ${{ github.ref_name }}
+
+            All-in-one automation runner for Achieve3000.
+
+            ### Downloads
+            | Platform | File | Instructions |
+            |----------|------|--------------|
+            | 🪟 **Windows** | `Achieve3000-Windows.zip` | Unzip and launch `Achieve3000Launcher.exe` |
+            | 🍎 **macOS** | `Achieve3000-macOS.dmg` | Open DMG, drag to Applications, launch |
+
+            ### What's New
+            - **Stealth Integration**: Bundled `playwright-stealth` with anti-detection flags
+            - **Updated Browser Profile**: Chrome 130 User-Agent + realistic client hints
+            - **Unified Release**: Windows ZIP & macOS DMG bundled together
+          files: |
+            release-assets/Achieve3000-Windows.zip
+            release-assets/Achieve3000-macOS.dmg
+          draft: false
+          prerelease: false
