@@ -1,6 +1,6 @@
 ; Inno Setup Script for Achieve3000 Automation
 #define MyAppName "Achieve3000 Automation"
-#define MyAppVersion "2.1.0"
+#define MyAppVersion "2.1.1"
 #define MyAppPublisher "Achieve3000 Automation"
 #define MyAppExeName "Achieve3000Launcher.exe"
 
