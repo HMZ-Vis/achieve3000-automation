@@ -55,13 +55,16 @@ jobs:
               launcher.py
           }
 
-      - name: Copy Playwright browsers into dist
+      - name: Copy Playwright browsers and icons into dist
         run: |
           if (Test-Path "playwright-browsers") {
             Copy-Item -Recurse -Force playwright-browsers dist\playwright-browsers
             Write-Host "Playwright browsers copied."
           } else {
             Write-Host "No bundled browser directory — skipping."
+          }
+          if (Test-Path "achieve3000.ico") {
+            Copy-Item achieve3000.ico dist\achieve3000.ico
           }
 
       - name: Verify build artifacts
@@ -74,10 +77,22 @@ jobs:
           }
           Write-Host "All Windows artifacts verified."
 
-      - name: Package as ZIP
+      - name: Build Windows Setup.exe Installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: installer.iss
+          options: /O+
+
+      - name: Package portable ZIP
         run: |
           Compress-Archive -Path dist\* -DestinationPath Achieve3000-Windows.zip
           Write-Host "Packaged Achieve3000-Windows.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Achieve3000-Windows-Setup
+          path: installer-output/Achieve3000-Setup.exe
+          retention-days: 7
 
       - uses: actions/upload-artifact@v4
         with:
@@ -130,11 +145,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download Windows Setup Installer
         uses: actions/download-artifact@v4
         with:
-          path: release-assets
-          merge-artifacts: true
+          name: Achieve3000-Windows-Setup
+          path: ./
+
+      - name: Download Windows Portable ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: Achieve3000-Windows
+          path: ./
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Achieve3000-macOS
+          path: ./
+
+      - name: List downloaded release assets
+        run: ls -la
 
       - name: Create or update release
         uses: softprops/action-gh-release@v2
@@ -147,17 +177,19 @@ jobs:
             All-in-one automation runner for Achieve3000.
 
             ### Downloads
-            | Platform | File | Instructions |
-            |----------|------|--------------|
-            | 🪟 **Windows** | `Achieve3000-Windows.zip` | Unzip and launch `Achieve3000Launcher.exe` |
-            | 🍎 **macOS** | `Achieve3000-macOS.dmg` | Open DMG, drag to Applications, launch |
+            | Platform | File | Type |
+            |----------|------|------|
+            | 🪟 **Windows** | `Achieve3000-Setup.exe` | **Official Installer (Recommended)** |
+            | 🪟 **Windows** | `Achieve3000-Windows.zip` | Portable (No install needed) |
+            | 🍎 **macOS** | `Achieve3000-macOS.dmg` | Disk Image installer |
 
             ### What's New
             - **Stealth Integration**: Bundled `playwright-stealth` with anti-detection flags
+            - **Windows Setup Wizard**: Installs desktop shortcuts, start menu entry & uninstaller
             - **Updated Browser Profile**: Chrome 130 User-Agent + realistic client hints
-            - **Unified Release**: Windows ZIP & macOS DMG bundled together
           files: |
-            release-assets/Achieve3000-Windows.zip
-            release-assets/Achieve3000-macOS.dmg
+            Achieve3000-Setup.exe
+            Achieve3000-Windows.zip
+            Achieve3000-macOS.dmg
           draft: false
           prerelease: false
