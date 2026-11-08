@@ -1,5 +1,5 @@
-; Inno Setup Script for Achieve3000 Runner
-#define MyAppName "Achieve3000 Runner"
+; Inno Setup Script for Achieve3000 Automation
+#define MyAppName "Achieve3000 Automation"
 #define MyAppVersion "2.1.0"
 #define MyAppPublisher "Achieve3000 Automation"
 #define MyAppExeName "Achieve3000Launcher.exe"
@@ -9,7 +9,7 @@ AppId={{9B78D82A-3F4A-4D3E-91C2-88E079E31294}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\Achieve3000 Runner
+DefaultDirName={autopf}\Achieve3000 Automation
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=installer-output
