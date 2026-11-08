@@ -236,7 +236,7 @@ class AutomationLauncher(tk.Tk):
             text="Set up your account, choose a run size, then watch progress here.",
             style="Subtitle.TLabel",
         ).pack(anchor="w", pady=(4, 0))
-        ttk.Label(header, text="DESKTOP", style="Field.TLabel").pack(side="right", anchor="n", padx=(12, 4))
+        ttk.Label(header, text="DESKTOP · STEALTH", style="Field.TLabel").pack(side="right", anchor="n", padx=(12, 4))
 
         setup = ttk.Frame(outer)
         setup.pack(fill="x", pady=(0, 16))
@@ -410,6 +410,7 @@ class AutomationLauncher(tk.Tk):
             "ACHIEVE3000_PASSWORD": self.password.get(),
             "ITERATIONS": str(lessons),
             "HEADLESS": "true" if self.headless.get() else "false",
+            "PYTHONUNBUFFERED": "1",
         })
 
         # Inject bundled Playwright browser directory if present
@@ -505,7 +506,17 @@ class AutomationLauncher(tk.Tk):
 
     def _write_output(self, value):
         self.output.configure(state="normal")
-        self.output.insert("end", value)
+        # Colour-code key log lines
+        if "Stealth patches applied" in value:
+            self.output.insert("end", value, "stealth")
+            if "stealth" not in self.output.tag_names():
+                self.output.tag_configure("stealth", foreground="#34d399")
+        elif "without stealth patches" in value:
+            self.output.insert("end", value, "no_stealth")
+            if "no_stealth" not in self.output.tag_names():
+                self.output.tag_configure("no_stealth", foreground="#fb7185")
+        else:
+            self.output.insert("end", value)
         self.output.see("end")
         self.output.configure(state="disabled")
 

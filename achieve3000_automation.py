@@ -9,6 +9,12 @@ import certifi
 from playwright.sync_api import sync_playwright, Page
 
 try:
+    from playwright_stealth import stealth_sync
+    HAS_STEALTH = True
+except ImportError:
+    HAS_STEALTH = False
+
+try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
@@ -197,7 +203,15 @@ class Bot:
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(
             headless=os.environ.get("HEADLESS", "false").strip().lower() in {"1", "true", "yes", "on"},
-            args=["--disable-dev-shm-usage", "--no-sandbox"])
+            args=[
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+                "--disable-extensions",
+                "--start-maximized",
+                "--lang=en-US",
+            ])
         self._new_ctx()
 
     def _new_ctx(self):
@@ -206,9 +220,29 @@ class Bot:
             except: pass
         self.ctx = self.browser.new_context(
             viewport={"width": 1280, "height": 800},
-            user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"))
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/130.0.0.0 Safari/537.36"
+            ),
+            locale="en-US",
+            timezone_id="America/New_York",
+            extra_http_headers={
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "sec-ch-ua": '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": '"Windows"',
+                "Upgrade-Insecure-Requests": "1",
+            },
+        )
         self.page = self.ctx.new_page()
+        # Inject playwright-stealth patches to mask headless/automation signals
+        if HAS_STEALTH:
+            stealth_sync(self.page)
+            logger.info("Stealth patches applied.")
+        else:
+            logger.warning("playwright-stealth not installed; running without stealth patches.")
         self.page.set_default_timeout(15000)
         logger.info("Context rebuilt.")
 

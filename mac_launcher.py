@@ -402,7 +402,7 @@ HTML_PAGE = """<!DOCTYPE html>
   /* Stats Bar */
   .stats-bar {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 12px;
   }
   .stat-card {
@@ -643,8 +643,7 @@ HTML_PAGE = """<!DOCTYPE html>
     .actions { flex-wrap: wrap; }
     .status-text { width: 100%; margin: 4px 0 0; }
     .terminal-wrap { height: 260px; }
-  }
-</style>
+  }</style>
 </head>
 <body>
 <div class="container">
@@ -676,6 +675,10 @@ HTML_PAGE = """<!DOCTYPE html>
     <div class="stat-card">
       <span class="stat-label">Target Lessons</span>
       <span class="stat-val" id="statTarget">40</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Stealth Mode</span>
+      <span class="stat-val" id="statStealth" style="color: var(--success); font-size:13px;">Active ✓</span>
     </div>
   </div>
 
@@ -933,6 +936,14 @@ HTML_PAGE = """<!DOCTYPE html>
         const frag = document.createDocumentFragment();
         for (const log of data.new_logs) {
           frag.appendChild(formatLogLine(log));
+          // Detect stealth patch status from log output
+          if (log.includes('Stealth patches applied')) {
+            const el = document.getElementById('statStealth');
+            if (el) { el.textContent = 'Active ✓'; el.style.color = 'var(--success)'; }
+          } else if (log.includes('without stealth patches')) {
+            const el = document.getElementById('statStealth');
+            if (el) { el.textContent = 'Inactive'; el.style.color = '#fb7185'; }
+          }
         }
         term.appendChild(frag);
         if (document.getElementById('autoScroll').checked) {
